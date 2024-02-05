@@ -1,0 +1,81 @@
+// The model for simulating balancing selection on a tree of great apes
+initialize() {
+
+	if (exists("slimgui")){
+		defineConstant("N", 2000);  // pop size
+		initializeSLiMOptions(nucleotideBased=T); //nucleotide-based model
+
+		defineConstant("L", 1e5+2); // total chromosome length
+		defineConstant("G", 1e5);   // gene length
+		defineConstant("rho1", 1.25e-8); // recombination rate in the first half of the gene region
+		defineConstant("rho2", 1.25e-6); // recombination rate in the second half of the gene region
+		defineConstant("mu", 1.25e-8); // mutation rate
+
+		
+		defineConstant("bs_dominance", 1.5); // dominance coeficient for heterozygote advantage 
+		defineConstant("bs_sel_coef", 0.02); // selection coeficient for heterozygote advantage 
+		
+		initializeAncestralNucleotides(randomNucleotides(L)); // genrate random ancestral nucleotige sequence
+
+	}
+	
+	// Define split points
+	defineConstant("split1", 100001); // split to N/2 Hominini and N/2 Gorillini
+	defineConstant("split2", 102160); // split to N/4 humans and N/4 chimps 
+	defineConstant("split3", 103480); // split to N/4 sumatra and N/4 borneo
+	defineConstant("last", 103600);  // end gen
+		
+	initializeTreeSeq(); // Keep track of the ARGs
+	initializeRecombinationRate(c(rep(rho1, asInteger(L/2)), rep(rho2, asInteger(L/2))), c(0:(L-1))); //set recombination
+	initializeMutationTypeNuc("m0", 0.5, "f", 0.0); // drift
+	initializeMutationTypeNuc("m1", bs_dominance, "f", bs_sel_coef);
+	initializeGenomicElementType("g2", c(m0,m1), c(999,100), mutationMatrix=mmJukesCantor(mu)); // add muations to genomic regions
+	initializeGenomicElement(g2, asInteger(L/2-G/2), asInteger(L/2+G/2)); //create gene 
+}
+1 {
+	defineConstant("simID", getSeed()); // create ID of the simulation
+	sim.addSubpop("p11", N);  //create an ancestral population (Homininae) of N individuals
+	
+	// Schedule events
+	sim.rescheduleScriptBlock(s1, split1, split1);
+	sim.rescheduleScriptBlock(s2, split2, split2);
+	sim.rescheduleScriptBlock(s3, split3, split3);
+	sim.rescheduleScriptBlock(s4, last, last);
+
+}
+
+1: late() {
+
+}
+
+s1 2 late() {
+	sim.addSubpopSplit("p22", 1000, p11);
+	sim.addSubpopSplit("p33", 1000, p11);
+	p11.setSubpopulationSize(0);
+}
+
+s2 3 late() {
+	sim.addSubpopSplit("p1", 500, p22);
+	sim.addSubpopSplit("p2", 500, p22);
+	p22.setSubpopulationSize(0);
+}
+
+s3 4 late() {
+	sim.addSubpopSplit("p3", 500, p33);
+	sim.addSubpopSplit("p4", 500, p33);
+	p33.setSubpopulationSize(0);
+}
+
+s4 5 late() {
+	
+	// Save ancestral sequence
+	seq = sim.chromosome.ancestralNucleotides();
+	writeFile("/Users/sb442/Documents/Tools/DeepBLUES/simulations/SLiM/results/anc.fa", c(">1", seq));
+	// Save VCFs
+	p1.genomes.outputVCF("/Users/sb442/Documents/Tools/DeepBLUES/simulations/SLiM/results/p1.vcf");
+	p2.genomes.outputVCF("/Users/sb442/Documents/Tools/DeepBLUES/simulations/SLiM/results/p2.vcf");
+	p3.genomes.outputVCF("/Users/sb442/Documents/Tools/DeepBLUES/simulations/SLiM/results/p3.vcf");
+	p4.genomes.outputVCF("/Users/sb442/Documents/Tools/DeepBLUES/simulations/SLiM/results/p4.vcf");
+	sim.treeSeqOutput("/Users/sb442/Documents/Tools/DeepBLUES/simulations/SLiM/results/slim_" + simID + ".trees"); // Save ARG
+	sim.simulationFinished();
+}

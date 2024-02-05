@@ -1,0 +1,12 @@
+SLiM parameters:
+
+defineConstant("L", 1e5+2);    // total chromosome length
+defineConstant("G", 1e5);   // gene length
+defineConstant("rho1", 1.25e-8);
+defineConstant("rho2", 1.25e-6);
+defineConstant("mu", 1.25e-8);
+defineConstant("mu", 4e-8);
+defineConstant("split1", 10001);
+defineConstant("split2", 12160);
+defineConstant("split3", 13480);
+defineConstant("last", 13600);  // end gen

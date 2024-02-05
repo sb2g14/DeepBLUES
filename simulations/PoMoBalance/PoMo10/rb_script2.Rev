@@ -1,0 +1,240 @@
+# VALIDATION ANALYSES POMO BALANCE
+
+
+#taxa[1] <-taxon("pop1")
+#taxa[2] <-taxon("pop2")
+#taxa[3] <-taxon("pop3")
+#taxa[4] <-taxon("pop4")
+#taxa[5] <-taxon("pop5")
+#
+#n_sites <- 1000
+#
+#n_taxa <- 5
+#
+#n_branches <- 2 * n_taxa - 3
+
+data <- readCharacterDataDelimited("data/mix_100kb/sequences_bal_2.txt",stateLabels=58, type="NaturalNumbers", delimiter=" ", header=FALSE)
+
+taxa       <- data.taxa()
+
+n_taxa     <- data.ntaxa()
+
+n_branches <- 2 * n_taxa - 3
+
+
+# set up moves and monitors 
+
+moves    = VectorMoves()  
+
+monitors = VectorMonitors()
+
+
+
+# population size
+
+N <- 10
+
+
+# base frequencies
+
+pi_prior <- [0.25,0.25,0.25,0.25]
+
+pi ~ dnDirichlet(pi_prior)
+
+moves.append( mvBetaSimplex( pi , weight=30 ))
+
+
+# exchangebilities
+
+for (i in 1:6){
+
+  rho[i] ~ dnExponential(10.0)
+
+  moves.append(mvScale( rho[i], weight=2 ))
+
+}
+
+mu := [pi[2]*rho[1], pi[1]*rho[1], pi[3]*rho[2], pi[1]*rho[2], pi[4]*rho[3], pi[1]*rho[3], pi[3]*rho[4], pi[2]*rho[4], pi[4]*rho[5], pi[2]*rho[5], pi[4]*rho[6], pi[3]*rho[6]]
+
+# for (i in 1:12){
+#   moves.append(mvScale( mu[i], weight=10 ))
+#   moves.append( mvSlide( mu[i], weight=4 ) )
+#
+# }
+
+# # mutation rates
+#
+# for (i in 1:12){
+#
+#   mu[i] ~ dnExponential(100.0)
+#
+#   moves.append(mvScale( mu[i], weight=2 ))
+#
+# }
+
+# # phi
+#
+# sigma[1] <- 0.1
+#
+# for (i in 2:4){
+#
+#   sigma[i] ~ dnExponential(10.0)
+#
+#   moves.append(mvScale( sigma[i], weight=30 ))
+#
+# }
+#
+# phi := sigma + 1.0
+
+sigma ~ dnExponential(10.0)
+
+moves.append(mvScale( sigma, weight=30 ))
+#moves.append( mvUpDownScale(sigma, lambda=1.1, weight=3) )
+moves.append(mvAVMVN(sigma) )
+# moves.append(mvAVMVN(sigma) )
+# moves.append(mvSlice(sigma, weight=10) )
+# moves.append(mvEllipticalSliceSamplingSimple(sigma) )
+
+
+
+phi := [1.0,1.0+sigma,1.0+sigma,1.0]
+
+# balancing selection
+
+for (i in 1:6){
+
+  beta[i] ~ dnExponential(1.0)
+
+  moves.append( mvScale( beta[i], weight=30 ) )
+  #moves.append( mvUpDownScale(beta[i], lambda=0.9, weight=3) )
+  moves.append(mvAVMVN(beta[i]) )
+  # moves.append(mvSlice(beta[i], weight=10) )
+  # moves.append(mvEllipticalSliceSamplingSimple(beta[i]) )
+  
+}
+
+# beta <- [1, 1, 1, 1, 1, 1]
+
+# balanced frequencies
+
+for (i in 1:6){
+
+  Num[i] ~ dnUniform(0.5,9.5)
+
+  moves.append( mvSlide( Num[i], weight=10 ) )
+  moves.append( mvScale( Num[i], weight=10 ) )
+
+  B[i] := round(Num[i])
+
+}
+
+#B <- [2, 2, 2, 2, 2, 2]
+
+
+
+# rate matrix
+
+Q := fnPoMoBalance4N(N,mu,phi,beta,B)
+
+
+
+# defining the tree
+
+# # topology
+#
+# topology ~ dnUniformTopology(taxa)
+#
+# moves.append( mvNNI(topology, weight=2*n_taxa) )
+#
+#
+# # branch lengths
+#
+# for (i in 1:n_branches) {
+#
+#    branch_lengths[i] ~ dnExponential(1000.0)
+#
+#    moves.append( mvScale(branch_lengths[i]) )
+#
+# }
+#
+#
+# psi := treeAssembly(topology, branch_lengths)
+#
+#
+#
+# # Create the substitution model and clamp with our observed DNA data
+#
+# sequences ~ dnPhyloCTMC(psi,Q=Q,type="NaturalNumbers")
+
+#tree
+
+# psi <- readTrees("data/tree.nwk")[1]
+tree <- readBranchLengthTrees("data/test_pomo_balance_MAP_neutral.tree")[1]
+
+# Branch length prior.
+for (i in 1:n_branches) {
+    bl[i] ~ dnExponential(10.0)
+    moves.append( mvScale(bl[i]) )
+    # moves.append( mvScale(bl[i], lambda=0.1, tune=FALSE) )
+    # moves.append( mvScale(bl[i], lambda=1.0, tune=FALSE) )
+    # moves.append( mvScale(bl[i], lambda=10, tune=FALSE) )
+}
+
+psi := treeAssembly(tree, bl)
+
+# # root
+#
+# root1 <- rep(0.0,22)
+#
+# root1[1] <- 1.0
+# root1[2] <- 1.0
+# root1[3] <- 1.0
+# root1[4] <- 1.0
+#
+# root <- simplex( root1 )
+
+
+# data
+
+#sequences ~ dnPhyloCTMC(tree=psi, Q=Q,rootFrequencies=root, type="NaturalNumbers")
+sequences ~ dnPhyloCTMC(tree=psi, Q=Q, type="NaturalNumbers")
+
+sequences.clamp(data)
+
+
+
+# MCMC 
+
+# initialize the model object 
+
+mymodel = model(Q)
+
+
+#specify monitors and output files
+
+monitors.append(mnModel(filename="output2/test_pomo_balance.log",printgen=10))
+  
+monitors.append( mnFile(filename="output2/test_pomo_balance.trees", printgen=10, psi) )
+
+monitors.append(mnScreen(printgen=10))
+
+
+# mcmc sampling
+
+pbalance_mcmc = mcmc(mymodel,monitors,moves, nruns=4, combine="mixed")
+#pbalance_mcmc = mcmcmc(mymodel, monitors, moves, nruns=4, combine="mixed", deltaHeat=5)
+  
+#pbalance_mcmc.initializeFromCheckpoint("output/test_pomo_balance_checkpoint.txt")
+pbalance_mcmc.burnin(generations=2000,tuningInterval=200)
+#pbalance_mcmc.run(generations=20000,checkpointFile="output6/test_pomo_balance_checkpoint.txt",checkpointInterval=100)
+pbalance_mcmc.run(generations=30000)
+
+  
+# computing the maximum a posteriori tree
+
+trace = readTreeTrace("output2/test_pomo_balance.trees", treetype="non-clock", burnin= 0.2)
+
+mapTree(trace, file="output2/test_pomo_balance_MAP.tree" )
+# mccTree(trace, file="output6/test_pomo_balance_mcc.tree" )
+
+q()
