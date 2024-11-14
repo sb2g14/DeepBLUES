@@ -8,7 +8,7 @@ initialize() {
 		defineConstant("L", 1e5+2); // total chromosome length
 		defineConstant("G", 1e5);   // gene length
 		defineConstant("rho1", 1.25e-8); // recombination rate in the first half of the gene region
-		defineConstant("rho2", 1.25e-6); // recombination rate in the second half of the gene region
+		defineConstant("rho2", 1.25e-8); // recombination rate in the second half of the gene region
 		defineConstant("mu", 1.25e-8); // mutation rate
 
 		
@@ -32,15 +32,15 @@ initialize() {
 	initializeGenomicElementType("g2", c(m0,m1), c(999,100), mutationMatrix=mmJukesCantor(mu)); // add muations to genomic regions
 	initializeGenomicElement(g2, asInteger(L/2-G/2), asInteger(L/2+G/2)); //create gene 
 }
-1 {
+1 early() {
 	defineConstant("simID", getSeed()); // create ID of the simulation
 	sim.addSubpop("p11", N);  //create an ancestral population (Homininae) of N individuals
 	
 	// Schedule events
-	sim.rescheduleScriptBlock(s1, split1, split1);
-	sim.rescheduleScriptBlock(s2, split2, split2);
-	sim.rescheduleScriptBlock(s3, split3, split3);
-	sim.rescheduleScriptBlock(s4, last, last);
+	community.rescheduleScriptBlock(s1, split1, split1);
+	community.rescheduleScriptBlock(s2, split2, split2);
+	community.rescheduleScriptBlock(s3, split3, split3);
+	community.rescheduleScriptBlock(s4, last, last);
 
 }
 
@@ -70,12 +70,12 @@ s4 5 late() {
 	
 	// Save ancestral sequence
 	seq = sim.chromosome.ancestralNucleotides();
-	writeFile("/Users/sb442/Documents/Tools/DeepBLUES/simulations/SLiM/results/anc.fa", c(">1", seq));
+	writeFile("/Users/Antoniopacheco/Documents/DeepBLUES-main/simulations/SLiM/results/anc.fa", c(">1", seq));
 	// Save VCFs
-	p1.genomes.outputVCF("/Users/sb442/Documents/Tools/DeepBLUES/simulations/SLiM/results/p1.vcf");
-	p2.genomes.outputVCF("/Users/sb442/Documents/Tools/DeepBLUES/simulations/SLiM/results/p2.vcf");
-	p3.genomes.outputVCF("/Users/sb442/Documents/Tools/DeepBLUES/simulations/SLiM/results/p3.vcf");
-	p4.genomes.outputVCF("/Users/sb442/Documents/Tools/DeepBLUES/simulations/SLiM/results/p4.vcf");
-	sim.treeSeqOutput("/Users/sb442/Documents/Tools/DeepBLUES/simulations/SLiM/results/slim_" + simID + ".trees"); // Save ARG
+	p1.genomes.outputVCF("/Users/Antoniopacheco/Documents/DeepBLUES-main/simulations/SLiM/results/p1.vcf");
+	p2.genomes.outputVCF("/Users/Antoniopacheco/Documents/DeepBLUES-main/simulations/SLiM/results/p2.vcf");
+	p3.genomes.outputVCF("/Users/Antoniopacheco/Documents/DeepBLUES-main/simulations/SLiM/results/p3.vcf");
+	p4.genomes.outputVCF("/Users/Antoniopacheco/Documents/DeepBLUES-main/simulations/SLiM/results/p4.vcf");
+	sim.treeSeqOutput("/Users/Antoniopacheco/Documents/DeepBLUES-main/simulations/SLiM/results/slim_" + simID + ".trees"); // Save ARG
 	sim.simulationFinished();
 }
